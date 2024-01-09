@@ -1,0 +1,54 @@
+from surprise import Dataset, Reader
+from surprise.model_selection import train_test_split
+from surprise import KNNBasic
+from surprise import accuracy
+
+# Load the MovieLens dataset
+data = Dataset.load_builtin('ml-100k')
+
+# Define the reader and load the data
+reader = Reader(line_format='user item rating timestamp', sep='\t')
+data = Dataset.load_from_file('path_to_your_data', reader=reader)
+
+# Split the data into training and testing sets
+trainset, testset = train_test_split(data, test_size=0.25)
+
+# Build the collaborative filtering model (user-based)
+sim_options = {'name': 'cosine', 'user_based': True}
+model = KNNBasic(sim_options=sim_options)
+
+# Train the model
+model.fit(trainset)
+
+# Make predictions on the test set
+predictions = model.test(testset)
+
+# Evaluate the model
+accuracy.rmse(predictions)
+
+# Function to get movie recommendations for a given user
+def get_top_n_recommendations(predictions, n=10):
+    top_n = {}
+    for uid, iid, true_r, est, _ in predictions:
+        if uid not in top_n:
+            top_n[uid] = []
+        top_n[uid].append((iid, est))
+
+    # Sort the predictions for each user and get the top-n recommendations
+    for uid, user_ratings in top_n.items():
+        user_ratings.sort(key=lambda x: x[1], reverse=True)
+        top_n[uid] = user_ratings[:n]
+
+    return top_n
+
+# Get recommendations for a specific user (replace 'user_id' with an actual user ID)
+user_id = 'user_id'
+user_predictions = get_top_n_recommendations(predictions, n=10).get(user_id, [])
+
+# Print the recommendations
+if user_predictions:
+    print(f"Top 10 movie recommendations for user {user_id}:")
+    for movie_id, estimated_rating in user_predictions:
+        print(f"Movie ID: {movie_id}, Estimated Rating: {estimated_rating}")
+else:
+    print(f"No recommendations found for user {user_id}")
